@@ -1,5 +1,6 @@
 library(stringr)
 library(xts)
+library(ggplot2)
 
 getTimingsForDate <- function(baseDir,dateStr) {
   files <- list.files(baseDir,paste0("^",dateStr,"_.*_softcu_timings\\.csv$"))
@@ -7,7 +8,6 @@ getTimingsForDate <- function(baseDir,dateStr) {
   for (f in files) {
       part <- read.table(paste0(baseDir,"/",f),sep=";",quote="\"")
       server <- paste(str_match(f,"(op)33ias([0-9]+)")[,c(2,3)],collapse="")
-print(server)
       part <- data.frame(rep(server,nrow(part)),part[,])
       consolidated <- rbind(part,consolidated)
   }

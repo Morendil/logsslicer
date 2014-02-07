@@ -6,6 +6,8 @@ shinyUI(pageWithSidebar(
       value = Sys.Date())),
   mainPanel(
     verbatimTextOutput("date"),
-    verbatimTextOutput("status"))
+    verbatimTextOutput("status"),
+    plotOutput("plot"),
+    tableOutput("view"))
 ))
 
