@@ -19,28 +19,9 @@ shinyServer(function(input, output, session) {
     }
   })
 
-  output$plot <- renderPlot({
+  output$status  <- renderText({
     if (input$date >= Sys.Date()) return()
-    cutoff = input$cutoff/100
-    transp = input$alpha/100
-    bywhat = input$facet
-    if (nrow(data())==0) return()
-    sub = subset()
-    top = quantile(sub$Mesure/1000,probs=cutoff)
-    plot = ggplot(sub,aes(x=Creneau,y=Mesure/1000))+
-	ylab("Duree (secondes)")+	geom_point(alpha=transp)+	geom_smooth(method="lm")+	coord_cartesian(xlim=c(25000,75000),ylim=c(0,top))
-    if (bywhat!="-rien-") {
-	plot = plot+facet_grid(paste(bywhat,"~."))
-    }
-    print(plot)
-  },
-  height = function() {
-    bywhat = input$facet
-    if (input$date >= Sys.Date()) return()
-    sub = subset()
-    if (bywhat=="-rien-") {
-	400
-    } else 400 * length(levels(sub[,bywhat]))
+    if (nrow(data())==0) "No data for this date"
   })
 
   output$drillControls <- renderUI({
@@ -58,11 +39,40 @@ shinyServer(function(input, output, session) {
                 min=0, max=100, value=5))
   })
 
+  output$plot <- renderPlot({
+    if (input$date >= Sys.Date()) return()
+    cutoff = input$cutoff/100
+    transp = input$alpha/100
+    bywhat = input$facet
+    if (nrow(data())==0) return()
+    sub = subset()
+    top = quantile(sub$Mesure/1000,probs=cutoff)
+    fmt = function(x){strftime(as.POSIXct(x,origin=Sys.Date()),"%H:%M")}
+    plot = ggplot(sub,aes(x=Creneau,y=Mesure/1000))+
+	ylab("Duree (secondes)")+	xlab("Horaire")+	scale_x_continuous(breaks=seq(0,86400,3600),labels=fmt)+
+	theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+	geom_point(alpha=transp)+	geom_smooth(method="lm")+
+	coord_cartesian(xlim=c(24000,76000),ylim=c(0,top))
+    if (bywhat!="-rien-") {
+	plot = plot+facet_grid(paste(bywhat,"~."))
+    }
+    print(plot)
+  },
+  height = function() {
+    if (input$date >= Sys.Date()) return(0)
+    if (nrow(data())==0) return(0)
+    bywhat = input$facet
+    sub = subset()
+    if (bywhat=="-rien-") {
+	400
+    } else 400 * length(levels(sub[,bywhat]))
+  })
+
 })
 
 library(stringr)
 library(xts)
 library(ggplot2)
+library(scales)
 
 loadData <- function(date) {
   key = strftime(date,"%Y%m%d")
@@ -89,7 +99,7 @@ getTimingsForDate <- function(baseDir,dateStr) {
     "Libelle_Mesure","ID_Mesure","Mesure","Canal","Portail","Session",
     "User","PDV","Offre","Libelle_Offre","Cas_Gestion", "Poste_Travail",
     "Browser","OS")
-  consolidated$Creneau = as.numeric(align.time(strptime(gsub(",",".",consolidated$Time),"%d/%m/%Y %H:%M:%OS"),n=60*5)) %% 86400
+  consolidated$Creneau = as.numeric(strptime(gsub(",",".",consolidated$Time),"%d/%m/%Y %H:%M:%OS")) %% 86400
   consolidated
 }
 

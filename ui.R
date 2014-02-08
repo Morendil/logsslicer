@@ -7,6 +7,7 @@ shinyUI(pageWithSidebar(
       uiOutput("drillControls")),
   mainPanel(
     verbatimTextOutput("date"),
+    h3(textOutput("status")),
     plotOutput("plot"))
 ))
 
