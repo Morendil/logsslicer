@@ -31,10 +31,11 @@ shinyServer(function(input, output, session) {
     list(
       selectInput("mesure", "Mesure:", as.list(mesures)),
       selectInput("facet", "Stratifier par:", 
-        list("-rien-","Canal","Portail","Poste_Travail","Cas_Gestion","Browser","OS")
+        list("-rien-","Serveur","Canal","Portail","Poste_Travail",
+        "Cas_Gestion","Browser","OS")
       ),
       sliderInput("cutoff", "Plafond (%):", 
-                min=10, max=100, value=90),
+                min=10, max=100, value=99),
       sliderInput("alpha", "Transparence (%):", 
                 min=0, max=100, value=5))
   })
@@ -49,9 +50,11 @@ shinyServer(function(input, output, session) {
     top = quantile(sub$Mesure/1000,probs=cutoff)
     fmt = function(x){strftime(as.POSIXct(x,origin=Sys.Date()),"%H:%M")}
     plot = ggplot(sub,aes(x=Creneau,y=Mesure/1000))+
-	ylab("Duree (secondes)")+	xlab("Horaire")+	scale_x_continuous(breaks=seq(0,86400,3600),labels=fmt)+
+	ylab("Duree (secondes)")+
+	xlab("Horaire")+
+	scale_x_continuous(breaks=seq(0,86400,1800),labels=fmt)+
 	theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+	geom_point(alpha=transp)+	geom_smooth(method="lm")+
-	coord_cartesian(xlim=c(24000,76000),ylim=c(0,top))
+	coord_cartesian(xlim=c(25201,71999),ylim=c(0,top))
     if (bywhat!="-rien-") {
 	plot = plot+facet_grid(paste(bywhat,"~."))
     }
@@ -64,7 +67,7 @@ shinyServer(function(input, output, session) {
     sub = subset()
     if (bywhat=="-rien-") {
 	400
-    } else 400 * length(levels(sub[,bywhat]))
+    } else 300 * length(levels(sub[,bywhat]))
   })
 
 })
