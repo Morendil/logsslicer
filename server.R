@@ -43,11 +43,19 @@ shinyServer(function(input, output, session) {
     } else 400 * length(levels(sub[,bywhat]))
   })
 
-  output$mesurePicker <- renderUI({
+  output$drillControls <- renderUI({
     if (input$date >= Sys.Date()) return()
     if (nrow(data())==0) return()
     mesures <- levels(data()$ID_Mesure)
-    selectInput("mesure", "Mesure:", as.list(mesures))
+    list(
+      selectInput("mesure", "Mesure:", as.list(mesures)),
+      selectInput("facet", "Stratifier par:", 
+        list("-rien-","Canal","Portail","Poste_Travail","Cas_Gestion","Browser","OS")
+      ),
+      sliderInput("cutoff", "Plafond (%):", 
+                min=10, max=100, value=90),
+      sliderInput("alpha", "Transparence (%):", 
+                min=0, max=100, value=5))
   })
 
 })
