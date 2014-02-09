@@ -7,8 +7,20 @@ shinyServer(function(input, output, session) {
   subset <- reactive({
     full = data()
     mesure = input$mesure
+    zoom = input$zoom
+    zoom = if (is.null(zoom)) "-rien-" else zoom
+    zoomon = input$zoomon
+    zoomon = if (is.null(zoomon)) "-rien-" else zoomon
     if (nrow(full)==0) return(full)
-    full[full$ID_Mesure==mesure,]
+    sub = full[full$ID_Mesure==mesure,]
+    sub = if (zoomon == "-rien-") sub else sub[sub[,zoom]==zoomon,]
+    sub
+  })
+
+  zlevels <- reactive({
+    zoom = input$zoom
+    zoom = if (is.null(zoom)) "-rien-" else zoom
+    if (zoom == "-rien-") list("-rien-") else c("-rien-",levels(data()[,zoom]))
   })
 
   output$date  <- renderText({
@@ -29,22 +41,37 @@ shinyServer(function(input, output, session) {
     if (nrow(data())==0) return()
     mesures <- levels(data()$ID_Mesure)
     list(
+      sliderInput("cutoff", "Plafond (%):", 
+                min=10, max=100, value=99),
+      sliderInput("alpha", "Transparence (%):", 
+                min=0, max=100, value=5),
       selectInput("mesure", "Mesure:", as.list(mesures)),
       selectInput("facet", "Stratifier par:", 
         list("-rien-","Serveur","Canal","Portail","Poste_Travail",
         "Cas_Gestion","Browser","OS")
-      ),
-      sliderInput("cutoff", "Plafond (%):", 
-                min=10, max=100, value=99),
-      sliderInput("alpha", "Transparence (%):", 
-                min=0, max=100, value=5))
+      ))
+  })
+
+  output$zoomControls <- renderUI({
+    if (input$date >= Sys.Date()) return()
+    if (nrow(data())==0) return()
+    selectInput("zoom", "Zoomer sur:", 
+      list("-rien-","Serveur","Canal","Portail","Poste_Travail",
+      "Cas_Gestion","Browser","OS")
+    )
+  })
+
+  output$zoomLevels <- renderUI({
+    if (input$date >= Sys.Date()) return()
+    if (nrow(data())==0) return()
+    selectInput("zoomon", "Valeur:", zlevels())
   })
 
   output$plot <- renderPlot({
     if (input$date >= Sys.Date()) return()
     cutoff = input$cutoff/100
     transp = input$alpha/100
-    bywhat = input$facet
+    bywhat = if(is.null(input$facet)) "-rien-" else input$facet
     if (nrow(data())==0) return()
     sub = subset()
     top = quantile(sub$Mesure/1000,probs=cutoff)
@@ -55,7 +82,7 @@ shinyServer(function(input, output, session) {
 	scale_x_continuous(breaks=seq(0,86400,1800),labels=fmt)+
 	theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+	geom_point(alpha=transp)+	geom_smooth(method="lm")+
 	coord_cartesian(xlim=c(25201,71999),ylim=c(0,top))
-    if (bywhat!="-rien-") {
+    if (bywhat !="-rien-") {
 	plot = plot+facet_grid(paste(bywhat,"~."))
     }
     print(plot)
@@ -63,11 +90,11 @@ shinyServer(function(input, output, session) {
   height = function() {
     if (input$date >= Sys.Date()) return(0)
     if (nrow(data())==0) return(0)
-    bywhat = input$facet
+    bywhat = if(is.null(input$facet)) "-rien-" else input$facet
     sub = subset()
     if (bywhat=="-rien-") {
 	400
-    } else 300 * length(levels(sub[,bywhat]))
+    } else 200 * length(levels(sub[,bywhat]))
   })
 
 })
@@ -90,20 +117,21 @@ loadData <- function(date) {
 
 getTimingsForDate <- function(baseDir,dateStr) {
   files <- list.files(baseDir,paste0("^",dateStr,"_.*_softcu_timings\\.csv$"))
-  consolidated <- data.frame()
+  all <- data.frame()
   for (f in files) {
       part <- read.table(paste0(baseDir,"/",f),sep=";",quote="\"")
       server <- paste(str_match(f,"(op)33ias([0-9]+)")[,c(2,3)],collapse="")
       part <- data.frame(rep(server,nrow(part)),part[,])
-      consolidated <- rbind(part,consolidated)
+      all <- rbind(part, all)
   }
-  if (nrow(consolidated)==0) return(consolidated)
-  names(consolidated) = c("Serveur","Time","Creneau",
+  if (nrow(all)==0) return(all)
+  names(all) = c("Serveur","Time","Creneau",
     "Libelle_Mesure","ID_Mesure","Mesure","Canal","Portail","Session",
     "User","PDV","Offre","Libelle_Offre","Cas_Gestion", "Poste_Travail",
     "Browser","OS")
-  consolidated$Creneau = as.numeric(strptime(gsub(",",".",consolidated$Time),"%d/%m/%Y %H:%M:%OS")) %% 86400
-  consolidated
+  fmt = "%d/%m/%Y %H:%M:%OS"
+  all$Creneau = as.numeric(strptime(gsub(",",".", all $Time),fmt)) %% 86400
+  all
 }
 
 logs_by_date = new.env()
